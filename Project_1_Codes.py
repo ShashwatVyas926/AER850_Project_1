@@ -27,3 +27,13 @@ ax.set_zlabel('Z')
 ax.set_title('3D Scatter Plot of Dataset')
 legend = fig.colorbar(scatter, ax=ax, label='Step')
 plt.show()
+
+#Correlation Analysis
+import seaborn as sns
+
+correlation_matrix = df.corr()
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, linewidths=0.5)
+plt.title('Correlation Matrix of X,Y,Z with Target Variable (Step)')
+plt.show()
