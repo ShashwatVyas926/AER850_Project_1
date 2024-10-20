@@ -11,6 +11,10 @@ from sklearn.tree import DecisionTreeClassifier
 from scipy.stats import randint
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import accuracy_score, precision_score, f1_score, confusion_matrix, classification_report
+from sklearn.ensemble import StackingClassifier
+from sklearn.linear_model import LogisticRegression
+import joblib
+
 #Data Processing
 Project_1_data = 'Project_1_Data.csv'
 df = pd.read_csv(Project_1_data)
@@ -150,12 +154,62 @@ def plot_confusion_matrix(y_test, y_pred, model_name):
 plot_confusion_matrix(y_test, rf_pred, "Random Forest")
 
 #Stacked Model Performance Analysis
-stacking_clf = StackingClassifier(
-    estimators=[
-        ('random_forest', rf),
-        ('svc', svc)
-    ],
-    final_estimator=LogisticRegression(),
-    cv=5,
-    n_jobs=-1
-)
+estimators = [
+    ('rf', rf),
+    ('svc', svc)
+]
+
+stacked_model = StackingClassifier(estimators=estimators, final_estimator=LogisticRegression(), cv=5)
+stacked_model.fit(X_train_scaled, y_train)
+
+y_pred_stacked = stacked_model.predict(X_test_scaled)
+
+def evaluate_model(y_test, y_pred, model_name):
+    print(f"Performance of {model_name}:")
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, average='weighted', zero_division=1)
+    f1 = f1_score(y_test, y_pred, average='weighted')
+    
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"F1 Score: {f1:.4f}")
+    print("\nClassification Report:\n", classification_report(y_test, y_pred))
+    
+    return accuracy, precision, f1
+
+print("\nStacking Classifier:")
+evaluate_model(y_test, y_pred_stacked, "Stacking Classifier")
+
+def plot_confusion_matrix(y_test, y_pred, model_name):
+    cm = confusion_matrix(y_test, y_pred)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+    plt.title(f"Confusion Matrix for {model_name}")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.show()
+
+plot_confusion_matrix(y_test, y_pred_stacked, "Stacking Classifier")
+
+# Save the stacked model using joblib
+model_filename = "stacking_classifier_model.joblib"
+joblib.dump(stacked_model, model_filename)
+
+# Load the saved model and make predictions on new data
+loaded_model = joblib.load(model_filename)
+
+# Predict the corresponding maintenance step for new coordinates
+new_coordinates = [
+    [9.375, 3.0625, 1.51],
+    [6.995, 5.125, 0.3875],
+    [0, 3.0625, 1.93],
+    [9.4, 3, 1.8],
+    [9.4, 3, 1.3]
+]
+
+# Standardize the new coordinates using the same scaler
+new_coordinates_scaled = scaler.transform(new_coordinates)
+
+# Predict the maintenance steps
+predicted_steps = loaded_model.predict(new_coordinates_scaled)
+predicted_steps
