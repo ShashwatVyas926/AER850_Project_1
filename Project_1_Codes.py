@@ -1,13 +1,22 @@
-#Data Processing
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from scipy.stats import randint
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.metrics import accuracy_score, precision_score, f1_score, confusion_matrix, classification_report
+#Data Processing
 Project_1_data = 'Project_1_Data.csv'
 df = pd.read_csv(Project_1_data)
 print(df)
 
 #Data Visualization
-import matplotlib.pyplot as plt
-import numpy as np
-
 print("\Summary statistics:")
 print(df.describe())
 
@@ -29,8 +38,6 @@ legend = fig.colorbar(scatter, ax=ax, label='Step')
 plt.show()
 
 #Correlation Analysis
-import seaborn as sns
-
 correlation_matrix = df.corr()
 
 plt.figure(figsize=(8, 6))
@@ -39,16 +46,8 @@ plt.title('Correlation Matrix of X,Y,Z with Target Variable (Step)')
 plt.show()
 
 #Classification Model Development/Engineering
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-
-X = df.drop(columns=["Step"])
-y = df["Step"]
+X = df[['X', 'Y', 'Z']]
+y = df['Step']
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
@@ -87,24 +86,40 @@ knn_params = {
 knn = KNeighborsClassifier()
 knn_grid = GridSearchCV(estimator=knn, param_grid=knn_params, cv=5, scoring='accuracy', n_jobs=-1)
 knn_grid.fit(X_train_scaled, y_train)
+param_dist = {
+    'criterion': ['gini', 'entropy'],
+    'max_depth': randint(1, 20),
+    'min_samples_split': randint(2, 10),
+    'min_samples_leaf': randint(1, 10)
+}
 
-print("Best parameters for Random Forest:", rf_grid.best_params_)
-print("Best parameters for SVC:", svc_grid.best_params_)
-print("Best parameters for KNN:", knn_grid.best_params_)
+# Model 4: Decision Tree (DT) with RadomizedSearchCV
+dt = DecisionTreeClassifier(random_state=42)
+
+random_search = RandomizedSearchCV(
+    dt, param_distributions=param_dist, n_iter=50, 
+    scoring='accuracy', cv=5, random_state=42, n_jobs=-1
+)
+
+random_search.fit(X_train, y_train)
+
+best_params_dt = random_search.best_params_
+
+print("\nBest parameters for Random Forest:\n", rf_grid.best_params_)
+print("\nBest parameters for SVC:\n", svc_grid.best_params_)
+print("\nBest parameters for KNN:\n", knn_grid.best_params_)
+print("\nBest Parameters for Decision Tree:\n", best_params_dt)
 
 #Model Performance Analysis
-from sklearn.metrics import accuracy_score, precision_score, f1_score, confusion_matrix, classification_report
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 rf_pred = rf_grid.best_estimator_.predict(X_test_scaled)
 svc_pred = svc_grid.best_estimator_.predict(X_test_scaled)
 knn_pred = knn_grid.best_estimator_.predict(X_test_scaled)
+dt_pred = random_search.best_estimator_.predict(X_test_scaled)
 
 def evaluate_model(y_test, y_pred, model_name):
     print(f"Performance of {model_name}:")
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average='weighted')
+    precision = precision_score(y_test, y_pred, average='weighted', zero_division=1)
     f1 = f1_score(y_test, y_pred, average='weighted')
     
     print(f"Accuracy: {accuracy:.4f}")
@@ -120,3 +135,27 @@ print("\nSupport Vector Classifier (SVC):")
 evaluate_model(y_test, svc_pred, "SVC")
 print("\nK-Nearest Neighbors (KNN):")
 evaluate_model(y_test, knn_pred, "KNN")
+print("\nDecision Tree (DT):")
+evaluate_model(y_test, dt_pred, "DT")
+
+def plot_confusion_matrix(y_test, y_pred, model_name):
+    cm = confusion_matrix(y_test, y_pred)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+    plt.title(f"Confusion Matrix for {model_name}")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.show()
+
+plot_confusion_matrix(y_test, rf_pred, "Random Forest")
+
+#Stacked Model Performance Analysis
+stacking_clf = StackingClassifier(
+    estimators=[
+        ('random_forest', rf),
+        ('svc', svc)
+    ],
+    final_estimator=LogisticRegression(),
+    cv=5,
+    n_jobs=-1
+)
