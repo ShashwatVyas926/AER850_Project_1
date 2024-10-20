@@ -191,14 +191,12 @@ def plot_confusion_matrix(y_test, y_pred, model_name):
 
 plot_confusion_matrix(y_test, y_pred_stacked, "Stacking Classifier")
 
-# Save the stacked model using joblib
+#Model Evaluation
 model_filename = "stacking_classifier_model.joblib"
 joblib.dump(stacked_model, model_filename)
 
-# Load the saved model and make predictions on new data
 loaded_model = joblib.load(model_filename)
 
-# Predict the corresponding maintenance step for new coordinates
 new_coordinates = [
     [9.375, 3.0625, 1.51],
     [6.995, 5.125, 0.3875],
@@ -207,9 +205,7 @@ new_coordinates = [
     [9.4, 3, 1.3]
 ]
 
-# Standardize the new coordinates using the same scaler
 new_coordinates_scaled = scaler.transform(new_coordinates)
 
-# Predict the maintenance steps
 predicted_steps = loaded_model.predict(new_coordinates_scaled)
 predicted_steps
