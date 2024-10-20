@@ -133,7 +133,7 @@ def evaluate_model(y_test, y_pred, model_name):
     
     return accuracy, precision, f1
 
-print("Random Forest Classifier:")
+print("\nRandom Forest Classifier:")
 evaluate_model(y_test, rf_pred, "Random Forest")
 print("\nSupport Vector Classifier (SVC):")
 evaluate_model(y_test, svc_pred, "SVC")
